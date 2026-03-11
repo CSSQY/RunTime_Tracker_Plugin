@@ -2,7 +2,7 @@
 
 [api]
 # API基础URL
-base_url = "https://localhost.com"
+base_url = "http://localhost:3000"
 # API访问令牌
 token = "your_api_token_here"
 

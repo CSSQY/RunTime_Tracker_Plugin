@@ -9,39 +9,26 @@ class RuntimeTrackerTool(BaseTool):
     """RunTime Tracker工具 - 查询用户设备使用情况"""
     
     name = "runtime_tracker_tool"
+    description = "查询用户设备使用情况，包括设备状态、最近使用记录、使用统计和AI总结"
     available_for_llm = True  # 允许LLM调用此工具
     
-    @property
-    def description(self):
-        """从配置文件获取工具描述"""
-        default_username = self.get_config("user.default_username", "用户")
-        device_count = self.get_config("devices.device_count", 0)
-        device_names = self.get_config("devices.device_names", [])
-        device_list = "、".join(device_names) if device_names else "无"
-        return f"当需要找{default_username}，或者{default_username}主动查询设备使用情况时，查询其设备使用情况，{default_username}有{device_count}个设备：{device_list}"
-    
-    @property
-    def parameters(self):
-        """从配置文件获取参数描述"""
-        device_names = self.get_config("devices.device_names", [])
-        device_list = "、".join(device_names) if device_names else "无"
-        return [
-            ("query_type", "string", "查询类型: devices(设备列表), recent(最近记录), stats(统计数据), weekly(周统计), ai_summary(AI总结)", True),
-            ("device_id", "string", f"设备ID，可选设备有：{device_list}，不填则查询所有设备", False),
-            ("date", "string", "日期，格式YYYY-MM-DD，查询stats时使用", False),
-            ("week_offset", "integer", "周偏移，0=本周，-1=上周，查询weekly时使用", False),
-            ("app_name", "string", "应用名称，查询weekly时可指定", False)
-        ]
+    parameters = [
+        ("query_type", "string", "查询类型: devices(设备列表), recent(最近记录), stats(统计数据), weekly(周统计), ai_summary(AI总结)", True),
+        ("device_id", "string", "设备ID，如：电脑、手机，不填则查询所有设备", False),
+        ("date", "string", "日期，格式YYYY-MM-DD，查询stats时使用", False),
+        ("week_offset", "integer", "周偏移，0=本周，-1=上周，查询weekly时使用", False),
+        ("app_name", "string", "应用名称，查询weekly时可指定", False)
+    ]
     
     @property
     def API_BASE_URL(self):
         """从配置文件获取API基础URL"""
-        return self.get_config("api.base_url", "https://sleepyapi.cssqy.top")
+        return self.plugin_config.get("api", {}).get("base_url", "http://localhost:3000")
     
     @property
     def API_TOKEN(self):
         """从配置文件获取API令牌"""
-        return self.get_config("api.token", "")
+        return self.plugin_config.get("api", {}).get("token", "")
     
     async def execute(self, function_args: dict) -> Dict[str, Any]:
         """执行工具逻辑"""
@@ -62,23 +49,21 @@ class RuntimeTrackerTool(BaseTool):
             result = await self._format_result(query_type, data)
             
             # 获取默认用户名
-            default_username = self.get_config("user.default_username", "CSSQY")
+            default_username = self.plugin_config.get("user", {}).get("default_username", "CSSQY")
             result = f"用户: {default_username}\n" + result
             
             return {
                 "name": self.name,
-                "content": result,
-                "thought": f"已查询{default_username}的{query_type}信息，结果将用于智能对话参考"
+                "content": result
             }
             
         except Exception as e:
             # 获取默认用户名
-            default_username = self.get_config("user.default_username", "CSSQY")
+            default_username = self.plugin_config.get("user", {}).get("default_username", "CSSQY")
             error_message = f"查询失败: {str(e)}"
             return {
                 "name": self.name,
-                "content": error_message,
-                "thought": f"查询{default_username}设备信息失败，将在对话中告知用户"
+                "content": error_message
             }
     
     async def _build_url(self, query_type: str, device_id: str = None, date: str = None, week_offset: int = 0, app_name: str = None) -> str:
@@ -290,7 +275,7 @@ class RuntimeTrackerPlugin(BasePlugin):
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
         """返回插件包含的组件列表"""
-        default_username = self.get_config("user.default_username", "CSSQY")
+        default_username = self.plugin_config.get("user", {}).get("default_username", "CSSQY")
         return [
             (ComponentInfo("tool", "runtime_tracker_tool", f"查询{default_username}设备使用情况的工具"), RuntimeTrackerTool)
         ]
