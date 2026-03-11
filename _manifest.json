@@ -1,0 +1,28 @@
+{
+  "manifest_version": 1,
+  "name": "RunTime Tracker 插件",
+  "version": "1.0.0",
+  "description": "当有人需要找用户，或者用户主动查询设备使用情况时，查询用户设备使用情况",
+  "author": {
+    "name": "CSSQY"
+  },
+  "license": "MIT",
+  "homepage_url": "https://github.com/1812z/RunTime_Tracker",
+  "repository_url": "https://github.com/1812z/RunTime_Tracker",
+  "categories": ["Utility Tools", "External Integration"],
+  "keywords": ["设备监控", "使用统计", "RunTime Tracker", "用户查询"],
+  "host_application": {
+    "min_version": "1.0.0"
+  },
+  "plugin_info": {
+    "is_built_in": false,
+    "plugin_type": "general",
+    "components": [
+      {
+        "type": "tool",
+        "name": "runtime_tracker_tool",
+        "description": "当有人需要找用户，或者用户主动查询设备使用情况时，查询用户设备使用情况，支持通过用户名关键词触发查询，设备信息可配置"
+      }
+    ]
+  }
+}

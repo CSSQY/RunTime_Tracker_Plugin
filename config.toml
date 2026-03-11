@@ -1,0 +1,19 @@
+# RunTime Tracker 插件配置
+
+[api]
+# API基础URL
+# base_url = "https://sleepyapi.cssqy.top"
+# API访问令牌
+# token = "your_api_token_here"
+
+[user]
+# 默认用户名
+# default_username = "CSSQY"
+# 用户名关键词列表，当识别到这些关键词时触发查询
+# username_keywords = ["CSSQY", "管理员"]
+
+[devices]
+# 设备数量
+# device_count = 2
+# 设备列表
+# device_names = ["CSSQY的电脑", "手机"]
