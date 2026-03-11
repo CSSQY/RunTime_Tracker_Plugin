@@ -253,7 +253,7 @@ class RuntimeTrackerPlugin(BasePlugin):
         "api": {
             "base_url": {
                 "type": "string",
-                "default": "https://sleepyapi.cssqy.top",
+                "default": "https://localhost.top",
                 "description": "API基础URL"
             },
             "token": {
@@ -265,12 +265,12 @@ class RuntimeTrackerPlugin(BasePlugin):
         "user": {
             "default_username": {
                 "type": "string",
-                "default": "CSSQY",
+                "default": "用户",
                 "description": "默认用户名"
             },
             "username_keywords": {
                 "type": "array",
-                "default": ["CSSQY", "管理员"],
+                "default": ["用户", "管理员"],
                 "description": "用户名关键词列表"
             }
         },
@@ -282,8 +282,8 @@ class RuntimeTrackerPlugin(BasePlugin):
             },
             "device_names": {
                 "type": "array",
-                "default": ["CSSQY的电脑", "手机"],
-                "description": "设备列表"
+                "default": ["电脑", "手机"],
+                "description": "设备名字列表"
             }
         }
     }  # 配置文件模式
