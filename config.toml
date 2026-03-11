@@ -2,18 +2,18 @@
 
 [api]
 # API基础URL
-# base_url = "https://localhost.com"
+base_url = "https://localhost.com"
 # API访问令牌
-# token = "your_api_token_here"
+token = "your_api_token_here"
 
 [user]
 # 默认用户名
-# default_username = "用户"
+default_username = "用户"
 # 用户名关键词列表，当识别到这些关键词时触发查询
-# username_keywords = ["用户", "管理员"]
+username_keywords = ["用户", "管理员"]
 
 [devices]
 # 设备数量
-# device_count = 2
+device_count = 2
 # 设备列表
-# device_names = ["电脑", "手机"]
+device_names = ["电脑", "手机"]
