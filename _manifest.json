@@ -7,8 +7,8 @@
     "name": "CSSQY"
   },
   "license": "MIT",
-  "homepage_url": "https://github.com/1812z/RunTime_Tracker",
-  "repository_url": "https://github.com/1812z/RunTime_Tracker",
+  "homepage_url": "https://github.com/CSSQY/RunTime_Tracker_Plugin/",
+  "repository_url": "https://github.com/CSSQY/RunTime_Tracker_Plugin/",
   "host_application": {
     "min_version": "0.8.0"
   },
