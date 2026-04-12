@@ -1,6 +1,6 @@
 # RunTime Tracker Plugin
 
-> 本项目由 AI 开发
+> 本项目由 AI 全程主导开发
 
 一个对接 [RunTime Tracker](https://github.com/1812z/RunTime_Tracker) 后端 API 的 MaiBot 插件，用于查询设备使用时间统计。
 
