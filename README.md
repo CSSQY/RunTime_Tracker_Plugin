@@ -3,7 +3,8 @@
 > 本项目由 AI 全程主导开发
 
 一个对接 [RunTime Tracker](https://github.com/1812z/RunTime_Tracker) 后端 API 的 MaiBot 插件，用于查询设备使用时间统计。
-使用了[MaiBot-Plugin-Kit](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)进行开发
+
+使用了[MaiBot-Plugin-Kit](https://github.com/zhiyiYo/PyQt-Fluent-Widgets)进行开发。
 
 ## 功能特性
 
