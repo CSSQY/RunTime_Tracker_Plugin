@@ -1,27 +1,44 @@
 {
   "manifest_version": 1,
-  "name": "RunTime Tracker 插件",
+  "name": "Run Time Tracker Plugin",
   "version": "1.0.0",
-  "description": "当有人需要找用户，或者用户主动查询设备使用情况时，查询用户设备使用情况",
+  "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。",
   "author": {
     "name": "CSSQY"
   },
   "license": "MIT",
   "homepage_url": "https://github.com/1812z/RunTime_Tracker",
   "repository_url": "https://github.com/1812z/RunTime_Tracker",
-  "categories": ["Utility Tools", "External Integration"],
-  "keywords": ["设备监控", "使用统计", "RunTime Tracker", "用户查询"],
   "host_application": {
-    "min_version": "1.0.0"
+    "min_version": "0.8.0"
   },
+  "keywords": [
+    "full",
+    "action",
+    "command",
+    "tool"
+  ],
+  "categories": [
+    "Other"
+  ],
   "plugin_info": {
     "is_built_in": false,
     "plugin_type": "general",
     "components": [
       {
+        "type": "action",
+        "name": "Run_Time_Tracker_plugin_action",
+        "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。 Action"
+      },
+      {
+        "type": "command",
+        "name": "Run_Time_Tracker_plugin_command",
+        "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。 Command"
+      },
+      {
         "type": "tool",
-        "name": "runtime_tracker_tool",
-        "description": "当有人需要找用户，或者用户主动查询设备使用情况时，查询用户设备使用情况，支持通过用户名关键词触发查询，设备信息可配置"
+        "name": "Run_Time_Tracker_plugin_tool",
+        "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。 Tool"
       }
     ]
   }

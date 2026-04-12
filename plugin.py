@@ -1,281 +1,322 @@
-from typing import List, Tuple, Type, Dict, Any
-from src.plugin_system import BasePlugin, register_plugin, BaseTool, ComponentInfo
-import aiohttp
-import json
+"""
+Run Time Tracker Plugin - 完整功能插件
 
-# ===== Tool组件 =====
+一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。
 
-class RuntimeTrackerTool(BaseTool):
-    """RunTime Tracker工具 - 查询用户设备使用情况"""
-    
-    name = "runtime_tracker_tool"
-    description = "查询用户设备使用情况，包括设备状态、最近使用记录、使用统计和AI总结"
-    available_for_llm = True  # 允许LLM调用此工具
-    
+作者：CSSQY
+版本：1.0.0
+
+支持 Command 和 Tool 组件，调用 RunTime Tracker API 获取设备使用数据。
+"""
+
+from typing import Any, Dict, List, Optional, Tuple, Type
+
+from src.plugin_system import (
+    BasePlugin,
+    register_plugin,
+    BaseCommand,
+    BaseTool,
+    ComponentInfo,
+    ToolParamType,
+)
+from src.common.logger import get_logger
+
+from .utils import (
+    get_devices,
+    get_device_recent,
+    get_device_stats,
+    get_weekly_stats,
+    get_ai_summary,
+    format_devices_list,
+    format_recent_records,
+    format_stats,
+    format_weekly_stats,
+    format_ai_summary,
+)
+
+logger = get_logger("Run_Time_Tracker_plugin")
+
+
+class RunTimeTrackerPluginCommand(BaseCommand):
+    """命令响应组件 - 支持多子命令"""
+
+    command_name = "runtime"
+    command_description = "查询设备使用时间统计"
+    command_pattern = r"^/runtime(?:\s+(?P<subcmd>\w+)(?:\s+(?P<args>.*))?)?$"
+
+    async def execute(self) -> Tuple[bool, Optional[str], bool]:
+        subcmd = self.matched_groups.get("subcmd", "")
+        args = self.matched_groups.get("args", "")
+
+        api_base_url = self.get_config("api.base_url", "")
+        secret = self.get_config("api.secret", "")
+        default_device = self.get_config("api.default_device", "")
+
+        if not api_base_url:
+            await self.send_text("错误：未配置 API 地址，请在插件配置中设置 api.base_url")
+            return False, "未配置 API 地址", True
+
+        if not secret:
+            await self.send_text("错误：未配置 API 密钥，请在插件配置中设置 api.secret")
+            return False, "未配置 API 密钥", True
+
+        if not subcmd:
+            await self.send_text(
+                "📱 RunTime Tracker 使用指南：\n\n"
+                "/runtime devices - 查看所有设备\n"
+                "/runtime recent <设备名> - 查看最近记录\n"
+                "/runtime stats <设备名> [日期] - 查看单日统计\n"
+                "/runtime weekly <设备名> [周偏移] - 查看周统计"
+            )
+            return True, "显示帮助信息", True
+
+        if subcmd == "devices":
+            result = await get_devices(api_base_url, secret)
+            if result is None:
+                await self.send_text("获取设备列表失败，请检查 API 配置")
+                return False, "获取设备列表失败", True
+            formatted = format_devices_list(result)
+            await self.send_text(formatted)
+            return True, "获取设备列表成功", True
+
+        if subcmd == "recent":
+            device_id = args.strip() or default_device
+            if not device_id:
+                await self.send_text("请指定设备名：/runtime recent <设备名>")
+                return False, "未指定设备", True
+            result = await get_device_recent(api_base_url, secret, device_id)
+            if result is None:
+                await self.send_text(f"获取 {device_id} 的最近记录失败")
+                return False, "获取最近记录失败", True
+            formatted = format_recent_records(result, device_id)
+            await self.send_text(formatted)
+            return True, "获取最近记录成功", True
+
+        if subcmd == "stats":
+            parts = args.strip().split(maxsplit=1)
+            device_id = parts[0] if parts else ""
+            date = parts[1] if len(parts) > 1 else None
+            device_id = device_id or default_device
+            if not device_id:
+                await self.send_text("请指定设备名：/runtime stats <设备名> [日期]")
+                return False, "未指定设备", True
+            if not date:
+                from datetime import date as date_type
+                date = date_type.today().isoformat()
+            result = await get_device_stats(api_base_url, secret, device_id, date)
+            if result is None:
+                await self.send_text(f"获取 {device_id} 在 {date} 的统计失败")
+                return False, "获取统计失败", True
+            formatted = format_stats(result, device_id, date)
+            await self.send_text(formatted)
+            return True, "获取统计成功", True
+
+        if subcmd == "weekly":
+            parts = args.strip().split(maxsplit=1)
+            device_id = parts[0] if parts else ""
+            week_offset = 0
+            if len(parts) > 1:
+                try:
+                    week_offset = int(parts[1])
+                except ValueError:
+                    pass
+            device_id = device_id or default_device
+            if not device_id:
+                await self.send_text("请指定设备名：/runtime weekly <设备名> [周偏移]")
+                return False, "未指定设备", True
+            result = await get_weekly_stats(api_base_url, secret, device_id, week_offset)
+            if result is None:
+                await self.send_text(f"获取 {device_id} 的周统计失败")
+                return False, "获取周统计失败", True
+            formatted = format_weekly_stats(result, device_id, week_offset)
+            await self.send_text(formatted)
+            return True, "获取周统计成功", True
+
+        await self.send_text(f"未知子命令：{subcmd}，请使用 /runtime 查看帮助")
+        return False, f"未知子命令: {subcmd}", True
+
+
+class GetDeviceListTool(BaseTool):
+    """获取所有设备列表工具"""
+
+    name = "get_device_list"
+    description = "获取所有已注册设备的列表及当前状态，包括设备名称、当前应用、运行状态、电池电量等"
+    parameters = []
+    available_for_llm = True
+
+    async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:
+        api_base_url = self.get_config("api.base_url", "")
+        secret = self.get_config("api.secret", "")
+
+        if not api_base_url:
+            return {"name": self.name, "content": "错误：未配置 API 地址"}
+        if not secret:
+            return {"name": self.name, "content": "错误：未配置 API 密钥"}
+
+        result = await get_devices(api_base_url, secret)
+        if result is None:
+            return {"name": self.name, "content": "获取设备列表失败，请检查 API 配置"}
+        return {"name": self.name, "content": format_devices_list(result)}
+
+
+class GetDeviceRecentTool(BaseTool):
+    """获取设备最近记录工具"""
+
+    name = "get_device_recent"
+    description = "获取指定设备最近30条应用切换记录，包括应用名称、时间戳和运行状态"
     parameters = [
-        ("query_type", "string", "查询类型: devices(设备列表), recent(最近记录), stats(统计数据), weekly(周统计), ai_summary(AI总结)", True),
-        ("device_id", "string", "设备ID，如：电脑、手机，不填则查询所有设备", False),
-        ("date", "string", "日期，格式YYYY-MM-DD，查询stats时使用", False),
-        ("week_offset", "integer", "周偏移，0=本周，-1=上周，查询weekly时使用", False),
-        ("app_name", "string", "应用名称，查询weekly时可指定", False)
+        ("device_id", ToolParamType.STRING, "设备唯一标识符，如：手机、平板", True, None),
     ]
-    
-    @property
-    def API_BASE_URL(self):
-        """从配置文件获取API基础URL"""
-        return self.plugin_config.get("api", {}).get("base_url", "http://localhost:3000")
-    
-    @property
-    def API_TOKEN(self):
-        """从配置文件获取API令牌"""
-        return self.plugin_config.get("api", {}).get("token", "")
-    
-    async def execute(self, function_args: dict) -> Dict[str, Any]:
-        """执行工具逻辑"""
-        try:
-            query_type = function_args.get("query_type")
-            device_id = function_args.get("device_id")
-            date = function_args.get("date")
-            week_offset = function_args.get("week_offset", 0)
-            app_name = function_args.get("app_name")
-            
-            # 构建API请求URL
-            url = await self._build_url(query_type, device_id, date, week_offset, app_name)
-            
-            # 发送请求
-            data = await self._fetch_data(url)
-            
-            # 格式化结果
-            result = await self._format_result(query_type, data)
-            
-            # 获取默认用户名
-            default_username = self.plugin_config.get("user", {}).get("default_username", "CSSQY")
-            result = f"用户: {default_username}\n" + result
-            
-            return {
-                "name": self.name,
-                "content": result
-            }
-            
-        except Exception as e:
-            # 获取默认用户名
-            default_username = self.plugin_config.get("user", {}).get("default_username", "CSSQY")
-            error_message = f"查询失败: {str(e)}"
-            return {
-                "name": self.name,
-                "content": error_message
-            }
-    
-    async def _build_url(self, query_type: str, device_id: str = None, date: str = None, week_offset: int = 0, app_name: str = None) -> str:
-        """构建API请求URL"""
-        base_url = self.API_BASE_URL
-        if query_type == "devices":
-            return f"{base_url}/api/devices"
-        elif query_type == "recent" and device_id:
-            return f"{base_url}/api/recent/{device_id}"
-        elif query_type == "stats" and device_id:
-            url = f"{base_url}/api/stats/{device_id}"
-            if date:
-                url += f"?date={date}"
-            return url
-        elif query_type == "weekly" and device_id:
-            url = f"{base_url}/api/weekly/{device_id}?weekOffset={week_offset}"
-            if app_name:
-                url += f"&appName={app_name}"
-            return url
-        elif query_type == "ai_summary" and device_id:
-            return f"{base_url}/api/ai/summary/{device_id}"
-        else:
-            raise ValueError("无效的查询类型或参数")
-    
-    async def _fetch_data(self, url: str) -> dict:
-        """获取API数据"""
-        headers = {}
-        if self.API_TOKEN:
-            headers["Authorization"] = f"Bearer {self.API_TOKEN}"
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
-                if response.status != 200:
-                    raise Exception(f"API请求失败: {response.status}")
-                return await response.json()
-    
-    async def _format_result(self, query_type: str, data: dict) -> str:
-        """格式化结果"""
-        if query_type == "devices":
-            return self._format_devices(data)
-        elif query_type == "recent":
-            return self._format_recent(data)
-        elif query_type == "stats":
-            return self._format_stats(data)
-        elif query_type == "weekly":
-            return self._format_weekly(data)
-        elif query_type == "ai_summary":
-            return self._format_ai_summary(data)
-        else:
-            return str(data)
-    
-    def _format_devices(self, devices: list) -> str:
-        """格式化设备列表"""
-        if not devices:
-            return "暂无设备数据"
-        
-        result = "📱 设备列表\n"
-        result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        
-        for device in devices:
-            device_name = device.get("device", "未知设备")
-            current_app = device.get("currentApp", "无")
-            running = device.get("running", False)
-            battery_level = device.get("batteryLevel", "未知")
-            is_charging = device.get("isCharging", False)
-            
-            status = "运行中" if running else "未运行"
-            charging_status = "充电中" if is_charging else "未充电"
-            
-            result += f"🔹 {device_name}\n"
-            result += f"   当前应用: {current_app}\n"
-            result += f"   状态: {status}\n"
-            result += f"   电池: {battery_level}% ({charging_status})\n"
-            result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        
-        return result
-    
-    def _format_recent(self, data: dict) -> str:
-        """格式化最近记录"""
-        if not data.get("success"):
-            return "查询失败"
-        
-        records = data.get("data", [])
-        count = data.get("count", 0)
-        
-        result = f"📊 最近应用切换记录 (共{count}条)\n"
-        result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        
-        for record in records:
-            app_name = record.get("appName", "未知应用")
-            timestamp = record.get("timestamp", "未知时间")
-            running = record.get("running", False)
-            
-            status = "运行中" if running else "已停止"
-            
-            result += f"🔹 {app_name}\n"
-            result += f"   时间: {timestamp}\n"
-            result += f"   状态: {status}\n"
-            result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        
-        return result
-    
-    def _format_stats(self, data: dict) -> str:
-        """格式化统计数据"""
-        total = data.get("total", 0)
-        apps = data.get("apps", {})
-        
-        result = f"📈 设备使用统计\n"
-        result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        result += f"总使用时长: {total}分钟\n\n"
-        result += "应用使用时长:\n"
-        
-        for app, duration in apps.items():
-            result += f"🔹 {app}: {duration}分钟\n"
-        
-        return result
-    
-    def _format_weekly(self, data: dict) -> str:
-        """格式化周统计数据"""
-        week_offset = data.get("weekOffset", 0)
-        week_range = data.get("weekRange", {})
-        daily_totals = data.get("dailyTotals", {})
-        app_daily_stats = data.get("appDailyStats", {})
-        
-        result = f"📅 周统计数据 (偏移: {week_offset})\n"
-        result += f"日期范围: {week_range.get('start', '')} 至 {week_range.get('end', '')}\n"
-        result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        result += "每日总使用时长:\n"
-        
-        for date, duration in daily_totals.items():
-            result += f"🔹 {date}: {duration}分钟\n"
-        
-        result += "\n各应用每日使用时长:\n"
-        for app, daily_stats in app_daily_stats.items():
-            result += f"\n{app}:\n"
-            for date, duration in daily_stats.items():
-                result += f"   🔹 {date}: {duration}分钟\n"
-        
-        return result
-    
-    def _format_ai_summary(self, data: dict) -> str:
-        """格式化AI总结"""
-        success = data.get("success", False)
-        if not success:
-            return "AI总结获取失败"
-        
-        device_id = data.get("deviceId", "未知设备")
-        summary = data.get("summary", "无总结内容")
-        timestamp = data.get("timestamp", "未知时间")
-        date_range = data.get("dateRange", {})
-        
-        result = f"🤖 设备AI总结\n"
-        result += f"设备: {device_id}\n"
-        result += f"生成时间: {timestamp}\n"
-        result += f"覆盖范围: {date_range.get('start', '')} 至 {date_range.get('end', '')}\n"
-        result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        result += summary
-        
-        return result
+    available_for_llm = True
+
+    async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:
+        device_id = function_args.get("device_id", "")
+        if not device_id:
+            return {"name": self.name, "content": "错误：缺少设备ID参数"}
+
+        api_base_url = self.get_config("api.base_url", "")
+        secret = self.get_config("api.secret", "")
+
+        if not api_base_url:
+            return {"name": self.name, "content": "错误：未配置 API 地址"}
+        if not secret:
+            return {"name": self.name, "content": "错误：未配置 API 密钥"}
+
+        result = await get_device_recent(api_base_url, secret, device_id)
+        if result is None:
+            return {"name": self.name, "content": f"获取 {device_id} 的最近记录失败"}
+        return {"name": self.name, "content": format_recent_records(result, device_id)}
+
+
+class GetDeviceStatsTool(BaseTool):
+    """获取设备单日统计工具"""
+
+    name = "get_device_stats"
+    description = "获取指定设备某天的使用统计数据，包括总使用时长、各应用使用时长、每小时使用时长"
+    parameters = [
+        ("device_id", ToolParamType.STRING, "设备唯一标识符", True, None),
+        ("date", ToolParamType.STRING, "查询日期，格式 YYYY-MM-DD，默认为当天", False, None),
+    ]
+    available_for_llm = True
+
+    async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:
+        device_id = function_args.get("device_id", "")
+        if not device_id:
+            return {"name": self.name, "content": "错误：缺少设备ID参数"}
+
+        date = function_args.get("date")
+        if not date:
+            from datetime import date as date_type
+            date = date_type.today().isoformat()
+
+        api_base_url = self.get_config("api.base_url", "")
+        secret = self.get_config("api.secret", "")
+
+        if not api_base_url:
+            return {"name": self.name, "content": "错误：未配置 API 地址"}
+        if not secret:
+            return {"name": self.name, "content": "错误：未配置 API 密钥"}
+
+        result = await get_device_stats(api_base_url, secret, device_id, date)
+        if result is None:
+            return {"name": self.name, "content": f"获取 {device_id} 在 {date} 的统计失败"}
+        return {"name": self.name, "content": format_stats(result, device_id, date)}
+
+
+class GetWeeklyStatsTool(BaseTool):
+    """获取设备周统计工具"""
+
+    name = "get_weekly_stats"
+    description = "获取指定设备某周的统计数据（7天内每个应用的每日使用时间）"
+    parameters = [
+        ("device_id", ToolParamType.STRING, "设备唯一标识符", True, None),
+        ("week_offset", ToolParamType.INTEGER, "周偏移，0=本周，-1=上周，-2=上上周", False, 0),
+    ]
+    available_for_llm = True
+
+    async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:
+        device_id = function_args.get("device_id", "")
+        if not device_id:
+            return {"name": self.name, "content": "错误：缺少设备ID参数"}
+
+        week_offset = function_args.get("week_offset", 0)
+
+        api_base_url = self.get_config("api.base_url", "")
+        secret = self.get_config("api.secret", "")
+
+        if not api_base_url:
+            return {"name": self.name, "content": "错误：未配置 API 地址"}
+        if not secret:
+            return {"name": self.name, "content": "错误：未配置 API 密钥"}
+
+        result = await get_weekly_stats(api_base_url, secret, device_id, week_offset)
+        if result is None:
+            return {"name": self.name, "content": f"获取 {device_id} 的周统计失败"}
+        return {"name": self.name, "content": format_weekly_stats(result, device_id, week_offset)}
+
+
+class GetAiSummaryTool(BaseTool):
+    """获取设备AI总结工具"""
+
+    name = "get_ai_summary"
+    description = "获取指定设备最近生成的 AI 使用总结，包含设备使用行为的智能分析"
+    parameters = [
+        ("device_id", ToolParamType.STRING, "设备唯一标识符", True, None),
+    ]
+    available_for_llm = True
+
+    async def execute(self, function_args: Dict[str, Any]) -> Dict[str, Any]:
+        device_id = function_args.get("device_id", "")
+        if not device_id:
+            return {"name": self.name, "content": "错误：缺少设备ID参数"}
+
+        api_base_url = self.get_config("api.base_url", "")
+        secret = self.get_config("api.secret", "")
+
+        if not api_base_url:
+            return {"name": self.name, "content": "错误：未配置 API 地址"}
+        if not secret:
+            return {"name": self.name, "content": "错误：未配置 API 密钥"}
+
+        result = await get_ai_summary(api_base_url, secret, device_id)
+        if result is None:
+            return {"name": self.name, "content": f"获取 {device_id} 的 AI 总结失败"}
+        return {"name": self.name, "content": format_ai_summary(result, device_id)}
+
 
 @register_plugin
-class RuntimeTrackerPlugin(BasePlugin):
-    """RunTime Tracker插件 - 为MaiBot提供设备使用情况查询功能"""
+class RunTimeTrackerPluginPlugin(BasePlugin):
+    """RunTime Tracker 插件 - 查询设备使用时间"""
 
-    # 插件基本信息
-    plugin_name = "runtime_tracker_plugin"
-    enable_plugin = True  # 启用插件
-    dependencies = []  # 插件依赖列表
-    python_dependencies = ["aiohttp"]  # Python依赖列表
-    config_file_name = "config.toml"  # 配置文件名
-    config_schema = {
+    plugin_name: str = "Run_Time_Tracker_plugin"
+    enable_plugin: bool = True
+    dependencies: List[str] = []
+    python_dependencies: List[str] = ["aiohttp"]
+    config_file_name: str = "config.toml"
+
+    config_section_descriptions = {
+        "plugin": "插件基本配置",
+        "api": "API 连接配置",
+    }
+
+    config_schema: dict = {
+        "plugin": {
+            "enabled": {"type": "bool", "default": True, "description": "是否启用插件"},
+            "config_version": {"type": "str", "default": "1.0.0", "description": "配置版本"},
+        },
         "api": {
-            "base_url": {
-                "type": "string",
-                "default": "https://localhost.top",
-                "description": "API基础URL"
-            },
-            "token": {
-                "type": "string",
-                "default": "",
-                "description": "API访问令牌"
-            }
+            "base_url": {"type": "str", "default": "", "description": "API 基础地址（必需）"},
+            "secret": {"type": "str", "default": "", "description": "API 请求密钥（必需）"},
+            "default_device": {"type": "str", "default": "", "description": "默认设备名称"},
         },
-        "user": {
-            "default_username": {
-                "type": "string",
-                "default": "用户",
-                "description": "默认用户名"
-            },
-            "username_keywords": {
-                "type": "array",
-                "default": ["用户", "管理员"],
-                "description": "用户名关键词列表"
-            }
-        },
-        "devices": {
-            "device_count": {
-                "type": "integer",
-                "default": 2,
-                "description": "设备数量"
-            },
-            "device_names": {
-                "type": "array",
-                "default": ["电脑", "手机"],
-                "description": "设备名字列表"
-            }
-        }
-    }  # 配置文件模式
+    }
 
     def get_plugin_components(self) -> List[Tuple[ComponentInfo, Type]]:
-        """返回插件包含的组件列表"""
-        default_username = self.plugin_config.get("user", {}).get("default_username", "CSSQY")
         return [
-            (ComponentInfo("tool", "runtime_tracker_tool", f"查询{default_username}设备使用情况的工具"), RuntimeTrackerTool)
+            (RunTimeTrackerPluginCommand.get_command_info(), RunTimeTrackerPluginCommand),
+            (GetDeviceListTool.get_tool_info(), GetDeviceListTool),
+            (GetDeviceRecentTool.get_tool_info(), GetDeviceRecentTool),
+            (GetDeviceStatsTool.get_tool_info(), GetDeviceStatsTool),
+            (GetWeeklyStatsTool.get_tool_info(), GetWeeklyStatsTool),
+            (GetAiSummaryTool.get_tool_info(), GetAiSummaryTool),
         ]
