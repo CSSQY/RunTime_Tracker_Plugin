@@ -81,7 +81,7 @@ LLM 在以下场景会自动调用相应工具：
 
 - Python 3.10+
 - [MaiBot](https://github.com/Mai-with-u/MaiBot) >= 0.8.0
-- aiohttp 
+- `aiohttp` (插件已声明依赖，会自动安装)
 
 ## API 文档
 

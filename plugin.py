@@ -18,6 +18,7 @@ from src.plugin_system import (
     BaseTool,
     ComponentInfo,
     ToolParamType,
+    ConfigField,
 )
 from src.common.logger import get_logger
 
@@ -301,13 +302,13 @@ class RunTimeTrackerPluginPlugin(BasePlugin):
 
     config_schema: dict = {
         "plugin": {
-            "enabled": {"type": "bool", "default": True, "description": "是否启用插件"},
-            "config_version": {"type": "str", "default": "1.0.0", "description": "配置版本"},
+            "enabled": ConfigField(type=bool, default=True, description="是否启用插件"),
+            "config_version": ConfigField(type=str, default="1.0.0", description="配置版本"),
         },
         "api": {
-            "base_url": {"type": "str", "default": "", "description": "API 基础地址（必需）"},
-            "secret": {"type": "str", "default": "", "description": "API 请求密钥（必需）"},
-            "default_device": {"type": "str", "default": "", "description": "默认设备名称"},
+            "base_url": ConfigField(type=str, default="", description="API 基础地址（必需）"),
+            "secret": ConfigField(type=str, default="", description="API 请求密钥（必需）"),
+            "default_device": ConfigField(type=str, default="", description="默认设备名称"),
         },
     }
 
