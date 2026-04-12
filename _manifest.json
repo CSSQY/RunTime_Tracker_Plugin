@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。",
   "author": {
-    "name": "CSSQY"
+    "name": "CSSQY",
+    "url":"https://github.com/CSSQY/"
   },
   "license": "MIT",
   "homepage_url": "https://github.com/CSSQY/RunTime_Tracker_Plugin/",
@@ -19,7 +20,7 @@
     "tool"
   ],
   "categories": [
-    "Other"
+    "Other","Utility Tools","External Integration"
   ],
   "plugin_info": {
     "is_built_in": false,
