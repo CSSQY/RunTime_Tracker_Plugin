@@ -7,9 +7,10 @@ Run Time Tracker Plugin 工具函数模块
 import asyncio
 import datetime
 from typing import Optional, Dict, Any, List
+from urllib.parse import quote
 
 
-async def safe_http_get(url: str, timeout: int = 10, headers: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]:
+async def safe_http_get(url: str, timeout: int = 10, headers: Optional[Dict[str, str]] = None, params: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
     """
     安全的 HTTP GET 请求
 
@@ -17,6 +18,7 @@ async def safe_http_get(url: str, timeout: int = 10, headers: Optional[Dict[str,
         url: 请求 URL
         timeout: 超时时间（秒）
         headers: 请求头
+        params: URL 查询参数
 
     Returns:
         JSON 响应字典，或失败时返回 None
@@ -24,7 +26,7 @@ async def safe_http_get(url: str, timeout: int = 10, headers: Optional[Dict[str,
     try:
         import aiohttp
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout), headers=headers or {}) as resp:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=timeout), headers=headers or {}, params=params) as resp:
                 if resp.status == 200:
                     return await resp.json()
                 return None
@@ -108,7 +110,7 @@ async def get_device_stats(api_base_url: str, secret: str, device_id: str, date:
     """
     url = f"{api_base_url.rstrip('/')}/api/stats/{device_id}"
     if date:
-        url += f"?date={date}"
+        url += f"?date={quote(date, safe='')}"
     headers = {"secret": secret}
     return await safe_http_get(url, headers=headers)
 
@@ -225,20 +227,21 @@ def format_stats(data: Dict[str, Any], device_id: str, date: str) -> str:
     if not data:
         return f"获取 {device_id} 在 {date} 的统计失败"
 
-    total_minutes = data.get("total", 0)
+    total_minutes = round(data.get("totalUsage", 0))
     hours = total_minutes // 60
     minutes = total_minutes % 60
 
     lines = [f"📊 {device_id} 在 {date} 的使用统计："]
     lines.append(f"总使用时长: {hours}小时{minutes}分钟\n")
 
-    apps = data.get("apps", {})
+    apps = data.get("appStats", {})
     if apps:
         lines.append("📱 各应用使用时长：")
         sorted_apps = sorted(apps.items(), key=lambda x: x[1], reverse=True)
-        for app_name, minutes in sorted_apps[:5]:
-            h = minutes // 60
-            m = minutes % 60
+        for app_name, mins in sorted_apps[:5]:
+            total_mins = round(float(mins))
+            h = total_mins // 60
+            m = total_mins % 60
             lines.append(f"  • {app_name}: {h}小时{m}分钟" if h > 0 else f"  • {app_name}: {m}分钟")
 
     return "\n".join(lines)
@@ -261,11 +264,15 @@ def format_weekly_stats(data: Dict[str, Any], device_id: str, week_offset: int) 
     if daily_totals:
         lines.append("每日总使用时长：")
         sorted_days = sorted(daily_totals.items())
-        for day, minutes in sorted_days:
-            h = minutes // 60
-            m = minutes % 60
+        for day, mins in sorted_days:
+            total_mins = round(float(mins))
+            h = total_mins // 60
+            m = total_mins % 60
             day_short = day[5:] if len(day) > 5 else day
-            lines.append(f"  • {day_short}: {h}小时{m}分钟" if h > 0 else f"  • {day_short}: {m}分钟")
+            if h > 0:
+                lines.append(f"  • {day_short}: {h}小时{m}分钟")
+            else:
+                lines.append(f"  • {day_short}: {m}分钟")
 
     return "\n".join(lines)
 

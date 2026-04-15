@@ -1,11 +1,11 @@
 {
   "manifest_version": 1,
   "name": "Run Time Tracker Plugin",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。",
   "author": {
     "name": "CSSQY",
-    "url":"https://github.com/CSSQY/"
+    "url": "https://github.com/CSSQY/"
   },
   "license": "MIT",
   "homepage_url": "https://github.com/CSSQY/RunTime_Tracker_Plugin/",
@@ -15,31 +15,27 @@
   },
   "keywords": [
     "full",
-    "action",
     "command",
     "tool"
   ],
   "categories": [
-    "Other","Utility Tools","External Integration"
+    "Other",
+    "Utility Tools",
+    "External Integration"
   ],
   "plugin_info": {
     "is_built_in": false,
     "plugin_type": "general",
     "components": [
       {
-        "type": "action",
-        "name": "Run_Time_Tracker_plugin_action",
-        "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。 Action"
-      },
-      {
         "type": "command",
         "name": "Run_Time_Tracker_plugin_command",
-        "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。 Command"
+        "description": "查询设备使用时间统计"
       },
       {
         "type": "tool",
         "name": "Run_Time_Tracker_plugin_tool",
-        "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。 Tool"
+        "description": "LLM 可调用的设备查询工具"
       }
     ]
   }
