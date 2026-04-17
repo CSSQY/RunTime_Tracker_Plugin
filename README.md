@@ -5,6 +5,10 @@
 
 一个对接 [RunTime Tracker](https://github.com/1812z/RunTime_Tracker) 后端 API 的 MaiBot 插件，用于查询设备使用时间统计。
 
+## 项目介绍
+本项目是一个对接 [1812z的RunTime Tracker后端](https://github.com/1812z/RunTime_Tracker) 的 MaiBot 插件，用于查询设备使用时间统计。
+使用本插件前，请先自行部署上述后端服务。
+
 ## 功能特性
 
 - **Command 组件**：用户通过命令主动查询
