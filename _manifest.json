@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "id": "run-time-tracker-plugin",
   "name": "Run Time Tracker Plugin",
-  "version": "1.2.0-pre",
+  "version": "1.2.0-pre.1",
   "description": "一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。",
   "author": {
     "name": "CSSQY",
