@@ -1,7 +1,7 @@
 # RunTime Tracker Plugin
 
 > 本项目由 AI 辅助开发
-> 版本: 1.2.0-pre
+> 版本: 1.2.0-pre.1
 
 > **⚠️ 重要提示**：v1.2.0 起插件已迁移至 MaiBot 新版 Plugin SDK v2，**不再兼容** MaiBot < 1.0.0 及旧版插件系统。如仍使用旧版 MaiBot，请继续使用 [v1.1.0](https://github.com/CSSQY/RunTime_Tracker_Plugin/releases/tag/v1.1.0)。
 
