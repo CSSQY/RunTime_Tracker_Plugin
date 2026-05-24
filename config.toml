@@ -1,0 +1,20 @@
+# Run Time Tracker Plugin 配置文件
+
+[plugin]
+enabled = true
+config_version = "1.2.0"
+
+[api]
+# API 基础地址（必填），例如：https://api.example.com
+# 注意：不要以 /api/ 结尾，插件会自动拼接 /api/ 路径
+base_url = ""
+# API 请求密钥（必填）
+secret = ""
+# 默认设备名称，设置后可简化命令，例如 /runtime stats 2025-01-01
+default_device = ""
+
+[security]
+# 是否仅允许管理员使用指令，开启后只有 admin_users 列表中的用户可以使用指令
+admin_only = false
+# 管理员用户ID列表，格式：QQ用户ID，多个用逗号分隔，例如：10001, 10002
+admin_users = ""
