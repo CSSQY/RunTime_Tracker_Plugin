@@ -4,7 +4,7 @@ Run Time Tracker Plugin - 完整功能插件
 一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。
 
 作者：CSSQY
-版本：1.2.0
+版本：1.2.1
 
 支持 Command 和 Tool 组件，调用 RunTime Tracker API 获取设备使用数据。
 """
@@ -12,7 +12,7 @@ Run Time Tracker Plugin - 完整功能插件
 import re
 from typing import Any, Dict, Optional, Tuple
 
-from maibot_sdk import MaiBotPlugin, Command, Tool
+from maibot_sdk import Command, Field, MaiBotPlugin, PluginConfigBase, Tool
 from maibot_sdk.types import ToolParameterInfo, ToolParamType
 
 from .utils import (
@@ -29,8 +29,101 @@ from .utils import (
 )
 
 
+class PluginSection(PluginConfigBase):
+    """插件基础配置。"""
+
+    __ui_label__ = "插件"
+    __ui_icon__ = "package"
+    __ui_order__ = 0
+
+    enabled: bool = Field(
+        default=True,
+        description="是否启用插件",
+        json_schema_extra={"label": "启用插件", "hint": "关闭后插件不会被加载，指令与工具全部停止"},
+    )
+    config_version: str = Field(
+        default="1.2.1",
+        description="配置结构版本，由插件维护，用户一般不需要改动",
+        json_schema_extra={
+            "label": "配置版本",
+            "hint": "插件用它判断是否升级配置结构，一般不用改",
+            "placeholder": "1.2.1",
+        },
+    )
+
+
+class ApiSection(PluginConfigBase):
+    """RunTime Tracker API 配置。"""
+
+    __ui_label__ = "API"
+    __ui_icon__ = "cloud"
+    __ui_order__ = 1
+
+    base_url: str = Field(
+        default="",
+        description="API 基础地址（必填），不要以 /api/ 结尾，插件会自动拼接 /api/ 路径",
+        json_schema_extra={
+            "label": "API 地址",
+            "hint": "不要以 /api/ 结尾，插件会自动拼接 /api/ 路径",
+            "placeholder": "https://api.example.com",
+        },
+    )
+    secret: str = Field(
+        default="",
+        description="API 请求密钥（必填）",
+        json_schema_extra={
+            "label": "API 密钥",
+            "hint": "RunTime Tracker 后端配置的请求密钥",
+            "placeholder": "your-api-secret",
+            "x-widget": "password",
+        },
+    )
+    default_device: str = Field(
+        default="",
+        description="默认设备名称，设置后可简化命令，例如 /runtime stats 2025-01-01",
+        json_schema_extra={
+            "label": "默认设备",
+            "hint": "设置后，只输入日期时自动使用该设备",
+            "placeholder": "例如：手机",
+        },
+    )
+
+
+class SecuritySection(PluginConfigBase):
+    """指令权限配置。"""
+
+    __ui_label__ = "权限"
+    __ui_icon__ = "shield"
+    __ui_order__ = 2
+
+    admin_only: bool = Field(
+        default=False,
+        description="是否仅允许管理员使用指令",
+        json_schema_extra={"label": "仅管理员可用", "hint": "开启后只有下方管理员列表中的用户可以使用指令"},
+    )
+    admin_users: str = Field(
+        default="",
+        description="管理员用户ID列表，多个用逗号分隔，例如：10001, 10002",
+        json_schema_extra={
+            "label": "管理员用户ID",
+            "hint": "多个用逗号分隔，例如：10001,10002",
+            "placeholder": "10001,10002",
+        },
+    )
+
+
+class RunTimeTrackerConfig(PluginConfigBase):
+    """RunTime Tracker 插件完整配置。"""
+
+    plugin: PluginSection = Field(default_factory=PluginSection)
+    api: ApiSection = Field(default_factory=ApiSection)
+    security: SecuritySection = Field(default_factory=SecuritySection)
+
+
 class RunTimeTrackerPlugin(MaiBotPlugin):
     """RunTime Tracker 插件 - 查询设备使用时间"""
+
+    config_model = RunTimeTrackerConfig
 
     async def on_load(self) -> None:
         """插件加载完成"""
@@ -40,20 +133,6 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
 
     async def on_config_update(self, scope: str, config_data: Dict[str, Any], version: str) -> None:
         """配置热更新"""
-
-    async def _get_plugin_config(self, key: str, default: Any = None) -> Any:
-        """从插件自身 config.toml 读取配置值（支持点分隔路径）。"""
-        plugin_config = await self.ctx.call_capability("config.get_plugin")
-        current = plugin_config
-        try:
-            for part in key.split("."):
-                if isinstance(current, dict) and part in current:
-                    current = current[part]
-                else:
-                    return default
-            return current
-        except Exception:
-            return default
 
     @Command(
         "runtime",
@@ -71,8 +150,8 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
         subcmd = matched_groups.get("subcmd", "")
         args = matched_groups.get("args") or ""
 
-        admin_only = await self._get_plugin_config("security.admin_only")
-        admin_users = await self._get_plugin_config("security.admin_users")
+        admin_only = self.config.security.admin_only
+        admin_users = self.config.security.admin_users
 
         if admin_only:
             user_id = str(kwargs.get("user_id", "") or "")
@@ -91,9 +170,9 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
                 await self.ctx.send.text(f"此功能仅限管理员使用 (当前用户ID: {user_id})", stream_id)
                 return False, "权限不足", True
 
-        api_base_url = await self._get_plugin_config("api.base_url")
-        secret = await self._get_plugin_config("api.secret")
-        default_device = await self._get_plugin_config("api.default_device")
+        api_base_url = self.config.api.base_url
+        secret = self.config.api.secret
+        default_device = self.config.api.default_device
 
         if not api_base_url:
             await self.ctx.send.text("错误：未配置 API 地址，请在插件配置中设置 api.base_url", stream_id)
@@ -199,8 +278,8 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
         parameters=[],
     )
     async def get_device_list_tool(self, **kwargs) -> Dict[str, Any]:
-        api_base_url = await self._get_plugin_config("api.base_url")
-        secret = await self._get_plugin_config("api.secret")
+        api_base_url = self.config.api.base_url
+        secret = self.config.api.secret
 
         if not api_base_url:
             return {"name": "get_device_list", "content": "错误：未配置 API 地址"}
@@ -228,8 +307,8 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
         if not device_id:
             return {"name": "get_device_recent", "content": "错误：缺少设备ID参数"}
 
-        api_base_url = await self._get_plugin_config("api.base_url")
-        secret = await self._get_plugin_config("api.secret")
+        api_base_url = self.config.api.base_url
+        secret = self.config.api.secret
 
         if not api_base_url:
             return {"name": "get_device_recent", "content": "错误：未配置 API 地址"}
@@ -267,8 +346,8 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
             from datetime import date as date_type
             date = date_type.today().isoformat()
 
-        api_base_url = await self._get_plugin_config("api.base_url")
-        secret = await self._get_plugin_config("api.secret")
+        api_base_url = self.config.api.base_url
+        secret = self.config.api.secret
 
         if not api_base_url:
             return {"name": "get_device_stats", "content": "错误：未配置 API 地址"}
@@ -302,8 +381,8 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
         if not device_id:
             return {"name": "get_weekly_stats", "content": "错误：缺少设备ID参数"}
 
-        api_base_url = await self._get_plugin_config("api.base_url")
-        secret = await self._get_plugin_config("api.secret")
+        api_base_url = self.config.api.base_url
+        secret = self.config.api.secret
 
         if not api_base_url:
             return {"name": "get_weekly_stats", "content": "错误：未配置 API 地址"}
@@ -331,8 +410,8 @@ class RunTimeTrackerPlugin(MaiBotPlugin):
         if not device_id:
             return {"name": "get_ai_summary", "content": "错误：缺少设备ID参数"}
 
-        api_base_url = await self._get_plugin_config("api.base_url")
-        secret = await self._get_plugin_config("api.secret")
+        api_base_url = self.config.api.base_url
+        secret = self.config.api.secret
 
         if not api_base_url:
             return {"name": "get_ai_summary", "content": "错误：未配置 API 地址"}
