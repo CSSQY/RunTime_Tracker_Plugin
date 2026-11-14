@@ -2,6 +2,14 @@
 
 本文件记录 `CSSQY.RunTime_Tracker_Plugin` 的版本变更。每版分为**主要功能**（用户可感知的新能力）与**细节**（修复、行为调整、插件 SDK / API 适配）两部分，一条一行。
 
+## [1.2.2]
+
+### 细节
+
+- 宿主适配：`_manifest.json` 的 `host_application.max_version` 提升至 `1.4.99`，插件在 MaiBot 1.4.x 下不再以兼容模式加载并提示迁移。
+- 版本：`_manifest.json` 与 `plugin.py` 版本号更新为 `1.2.2`，README 兼容范围同步；配置结构未变，`config_version` 保持 `1.2.1`。
+- 验证：Command / Tool 组件在 MaiBot 1.4.5 + maibot-plugin-sdk 2.23.0 下导入、注册与默认配置生成正常，无需改动插件代码。
+
 ## [1.2.1]
 
 ### 主要功能

@@ -1,9 +1,9 @@
 # RunTime Tracker Plugin
 
 > 本项目由 AI 辅助开发
-> 版本: 1.2.1
+> 版本: 1.2.2
 
-> **⚠️ 重要提示**：v1.2.0 起插件已迁移至 MaiBot 新版 Plugin SDK v2；v1.2.1 起要求 MaiBot >= 1.3.0 与 maibot-plugin-sdk >= 2.9.0，**不再兼容**更低版本及旧版插件系统。如仍使用旧版 MaiBot，请继续使用 [v1.1.0](https://github.com/CSSQY/RunTime_Tracker_Plugin/releases/tag/v1.1.0)。
+> **⚠️ 重要提示**：v1.2.0 起插件已迁移至 MaiBot 新版 Plugin SDK v2；v1.2.1 起要求 MaiBot >= 1.3.0 与 maibot-plugin-sdk >= 2.9.0，**不再兼容**更低版本及旧版插件系统；v1.2.2 起兼容 MaiBot 1.4.x（Host 兼容区间调整为 1.3.0 ~ 1.4.99）。如仍使用旧版 MaiBot，请继续使用 [v1.1.0](https://github.com/CSSQY/RunTime_Tracker_Plugin/releases/tag/v1.1.0)。
 
 ## 项目介绍
 本项目是一个对接 [1812z](https://github.com/1812z/) 的 [RunTime Tracker](https://github.com/1812z/RunTime_Tracker) 后端的 [MaiBot](https://github.com/Mai-with-u/MaiBot) 插件，用于查询设备使用时间统计。
@@ -109,7 +109,7 @@ LLM 在以下场景会自动调用相应工具：
 ## 依赖
 
 - Python 3.10+
-- [MaiBot](https://github.com/Mai-with-u/MaiBot) >= 1.3.0
+- [MaiBot](https://github.com/Mai-with-u/MaiBot) >= 1.3.0（已适配 1.4.x）
 - [maibot-plugin-sdk](https://pypi.org/project/maibot-plugin-sdk/) >= 2.9.0
 - `aiohttp`
 

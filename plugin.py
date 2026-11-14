@@ -4,7 +4,7 @@ Run Time Tracker Plugin - 完整功能插件
 一个对接时间跟踪应用程序的插件，用于麦麦监控您的设备使用时间。
 
 作者：CSSQY
-版本：1.2.1
+版本：1.2.2
 
 支持 Command 和 Tool 组件，调用 RunTime Tracker API 获取设备使用数据。
 """
